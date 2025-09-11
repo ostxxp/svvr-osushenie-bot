@@ -1,7 +1,7 @@
 from DB.docs_fetching import client
 
 spreadsheet = client.open_by_key('1OtnMFqU6-m-JsWyFX2GLG6HksRd18K0su4-INlcjN8A')
-worksheet = spreadsheet.get_worksheet(1)
+worksheet = spreadsheet.get_worksheet(2)
 
 
 async def add_feedback(id):
