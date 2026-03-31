@@ -1,5 +1,14 @@
 from DB.docs_fetching import client
 from DB import database_funcs, objects_fetching
+import re
+from bot.bot_init import bot
+
+def extract_sheet_key(link):
+    match = re.search(r'/d/([a-zA-Z0-9-_]+)', link)
+    if match:
+        return match.group(1)
+    else:
+        bot.send_message(chat_id=403953652, text=f"Неправильная ссылка на таблицу: {link}")
 
 
 async def create_table_report(id):
@@ -8,7 +17,8 @@ async def create_table_report(id):
 
     with open(f'report_info/{id}.txt', 'r', encoding='utf-8') as file:
         lines = file.readlines()
-    spreadsheet = client.open_by_key(link.split('/')[5])
+    key = extract_sheet_key(link)
+    spreadsheet = client.open_by_key(key)
     worksheet = spreadsheet.sheet1
     all_values = worksheet.get_all_values()
 
@@ -21,7 +31,8 @@ async def create_table_report(id):
 
 
 async def find_date(id, link, date):
-    spreadsheet = client.open_by_key(link.split('/')[5])
+    key = extract_sheet_key(link)
+    spreadsheet = client.open_by_key(key)
     worksheet = spreadsheet.sheet1
     values = worksheet.col_values(2)
     for dates in values:
