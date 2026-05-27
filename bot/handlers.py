@@ -22,7 +22,14 @@ router = Router()
 async def select_object(callback: CallbackQuery, state: FSMContext):
     month = datetime.today().month
     year = datetime.today().year
-    obj_name = callback.data.split('_', 2)[2]
+    obj_id = callback.data.split('_', 2)[2]
+    obj = await objects_fetching.fetch_objects_by_id(callback.from_user.id, obj_id)
+    if obj is None:
+        obj = await objects_fetching.fetch_objects_by_name(obj_id)
+    if obj is None:
+        await callback.answer("Не удалось найти объект. Нажмите /start ещё раз.", show_alert=True)
+        return
+    obj_name = obj[1]
 
     await database_funcs.add_report(id=callback.from_user.id, object_name=obj_name,
                                     prorab_name=await prorabs_fetching.get_prorab_name(callback.from_user.id))

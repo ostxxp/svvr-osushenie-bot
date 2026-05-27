@@ -18,9 +18,10 @@ feedback_keyboard = InlineKeyboardMarkup(inline_keyboard=[feedback_button])
 
 async def objects_to_keyboard(id):
     buttons = []
-    if (await objects_fetching.fetch_objects_names(id)) is not None:
-        for obj in (await objects_fetching.fetch_objects_names(id)):
-            buttons.append([InlineKeyboardButton(text=obj, callback_data=f"obj_{id}_{obj}")])
+    objects = await objects_fetching.fetch_objects(id)
+    if objects is not None:
+        for obj in objects:
+            buttons.append([InlineKeyboardButton(text=obj[1], callback_data=f"obj_{id}_{obj[0]}")])
         buttons.append(feedback_button)
         keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
         return keyboard
@@ -28,8 +29,12 @@ async def objects_to_keyboard(id):
 
 async def objects_to_keyboard_by_names(id, obj_names):
     buttons = []
-    for obj in obj_names:
-        buttons.append([InlineKeyboardButton(text=obj, callback_data=f"obj_{id}_{obj}")])
+    objects = await objects_fetching.fetch_objects(id) or []
+    for obj_name in obj_names:
+        for obj in objects:
+            if obj[1] == obj_name:
+                buttons.append([InlineKeyboardButton(text=obj_name, callback_data=f"obj_{id}_{obj[0]}")])
+                break
     buttons.append(feedback_button)
     keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
     return keyboard

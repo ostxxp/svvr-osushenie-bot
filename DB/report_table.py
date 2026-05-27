@@ -30,7 +30,7 @@ async def create_table_report(id):
                 worksheet.update_cell(int(row), all_values[0].index(lines[k].split()[0]) + 1, float(lines[k].split()[1].strip()))
             worksheet.update_cell(int(row), 3, "\n".join(sorted(lines[-1].split(','))))
     except:
-        bot.send_message(chat_id=403953652, text=f"Неправильная ссылка на таблицу: {link}")
+        await bot.send_message(chat_id=403953652, text=f"Неправильная ссылка на таблицу: {link}")
 
 
 async def find_date(id, link, date):
@@ -45,4 +45,4 @@ async def find_date(id, link, date):
         await database_funcs.set_column(id, str(len(values) + 1))
         return None
     except:
-        bot.send_message(chat_id=403953652, text=f"Неправильная ссылка на таблицу: {link}")
+        await bot.send_message(chat_id=403953652, text=f"Неправильная ссылка на таблицу: {link}")
