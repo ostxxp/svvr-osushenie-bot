@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -27,9 +28,31 @@ jobs:
       - name: Deploy to server
         run: |
           ssh root@217.26.30.27 << 'EOF'
+            set -e
             cd /root/osushenie_bot/SVVR_Osushenie_bot || exit
             git pull --ff-only origin main || exit
             .venv/bin/pip install -r requirements.txt || exit
+
+            if ! curl -sS -o /dev/null --connect-timeout 5 --max-time 10 https://api.telegram.org; then
+              telegram_ip=""
+              for candidate in $(dig +short api.telegram.org A) 149.154.167.220 149.154.166.110; do
+                if curl -sS -o /dev/null --connect-timeout 5 --max-time 10 \
+                  --resolve "api.telegram.org:443:${candidate}" https://api.telegram.org; then
+                  telegram_ip="$candidate"
+                  break
+                fi
+              done
+
+              if [ -z "$telegram_ip" ]; then
+                echo "No reachable Telegram API endpoint found"
+                exit 1
+              fi
+
+              sed -i '/Telegram Bot API fallback/d; /[[:space:]]api\.telegram\.org\([[:space:]]\|$\)/d' /etc/hosts
+              printf '\n# Telegram Bot API fallback selected during deployment\n%s api.telegram.org\n' "$telegram_ip" >> /etc/hosts
+              echo "Telegram API routed through $telegram_ip"
+            fi
+
             systemctl restart svvr-osushenie-bot.service
             systemctl is-active --quiet svvr-osushenie-bot.service
           EOF
