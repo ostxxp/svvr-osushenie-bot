@@ -1,0 +1,16 @@
+[Unit]
+Description=Consistent SVVR snapshot and encrypted cloud backup
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/svvr-backup/backup.sh
+Environment=RESTIC_CACHE_DIR=/var/cache/svvr-restic
+UMask=0077
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=30min
+MemoryMax=384M
+NoNewPrivileges=true
+PrivateTmp=true

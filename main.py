@@ -1,4 +1,6 @@
 import asyncio
+import logging
+from pathlib import Path
 
 
 from bot import start, handlers
@@ -6,9 +8,14 @@ from bot import inline_calendar
 from bot.bot_init import dp, bot
 from bot.reminder import send_reminders
 from DB import database_funcs
+from DB.database import Base, engine
 
 
 async def main():
+    # A new server has no SQLite schema or temporary report directories yet.
+    Base.metadata.create_all(bind=engine)
+    for directory in ("report_info", "feedbacks_temp"):
+        Path(directory).mkdir(parents=True, exist_ok=True)
     dp.include_routers(
         start.router,
         handlers.router,
@@ -23,6 +30,7 @@ async def main():
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     try:
         asyncio.run(main())
     except KeyboardInterrupt:

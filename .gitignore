@@ -4,3 +4,5 @@ __pycache__/
 credentials.json
 report_info
 feedbacks_temp
+.backup-recovery/
+.deployment/

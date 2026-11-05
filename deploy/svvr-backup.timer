@@ -1,0 +1,11 @@
+[Unit]
+Description=Hourly SVVR backup
+
+[Timer]
+OnCalendar=hourly
+RandomizedDelaySec=300
+Persistent=true
+Unit=svvr-backup.service
+
+[Install]
+WantedBy=timers.target

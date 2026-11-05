@@ -2,57 +2,49 @@ name: Deploy to Server
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
+
+concurrency:
+  group: svvr-production
+  cancel-in-progress: false
 
 jobs:
   deploy:
+    # Enable only after installing a dedicated key for the replacement VPS.
+    if: vars.SVVR_DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-latest
-
+    env:
+      SSH_HOST: 31.57.105.22
+      SSH_USER: svvr-deploy
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Set up SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "$SSH_PRIVATE_KEY" | sed -e 's/\r$//' > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          eval "$(ssh-agent -s)"
-          ssh-add ~/.ssh/id_rsa
-          ssh -o StrictHostKeyChecking=no root@217.26.30.27 "echo 'SSH работает!'"
         env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-
-      - name: Deploy to server
+          SSH_PRIVATE_KEY: ${{ secrets.SVVR_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ vars.SVVR_SSH_KNOWN_HOSTS }}
         run: |
-          ssh root@217.26.30.27 << 'EOF'
-            set -e
-            cd /root/osushenie_bot/SVVR_Osushenie_bot || exit
-            git pull --ff-only origin main || exit
-            .venv/bin/pip install -r requirements.txt || exit
+          set -eu
+          test -n "$SSH_PRIVATE_KEY"
+          test -n "$SSH_KNOWN_HOSTS"
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
 
-            if ! curl -sS -o /dev/null --connect-timeout 5 --max-time 10 https://api.telegram.org; then
-              telegram_ip=""
-              for candidate in $(dig +short api.telegram.org A) 149.154.167.220 149.154.166.110; do
-                if curl -sS -o /dev/null --connect-timeout 5 --max-time 10 \
-                  --resolve "api.telegram.org:443:${candidate}" https://api.telegram.org; then
-                  telegram_ip="$candidate"
-                  break
-                fi
-              done
-
-              if [ -z "$telegram_ip" ]; then
-                echo "No reachable Telegram API endpoint found"
-                exit 1
-              fi
-
-              sed -i '/Telegram Bot API fallback/d; /[[:space:]]api\.telegram\.org\([[:space:]]\|$\)/d' /etc/hosts
-              printf '\n# Telegram Bot API fallback selected during deployment\n%s api.telegram.org\n' "$telegram_ip" >> /etc/hosts
-              echo "Telegram API routed through $telegram_ip"
-            fi
-
-            systemctl restart svvr-osushenie-bot.service
-            systemctl is-active --quiet svvr-osushenie-bot.service
-          EOF
+      - name: Back up and deploy source without production data
+        run: |
+          set -eu
+          rsync -az --no-owner --no-group -e 'ssh -o StrictHostKeyChecking=yes' \
+            --include='/main.py' --include='/requirements.txt' \
+            --include='/bot/' --include='/DB/' --include='/deploy/' \
+            --include='*.py' --include='*.service' --include='*.timer' \
+            --include='*.sh' --include='*.md' --exclude='*' \
+            ./ "$SSH_USER@$SSH_HOST":/var/lib/svvr-deploy/incoming/
+          ssh -o StrictHostKeyChecking=yes "$SSH_USER@$SSH_HOST" \
+            'sudo -n /usr/local/sbin/svvr-install'
+          sleep 15
+          ssh -o StrictHostKeyChecking=yes "$SSH_USER@$SSH_HOST" \
+            'systemctl is-active --quiet svvr-osushenie-bot.service'

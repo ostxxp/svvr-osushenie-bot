@@ -1,0 +1,16 @@
+[Unit]
+Description=Verify encrypted SVVR cloud repository
+Wants=network-online.target
+After=network-online.target
+ConditionPathExists=/etc/svvr-backup/cloud.env
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/svvr-backup/cloud.env
+Environment=RESTIC_CACHE_DIR=/var/cache/svvr-restic
+ExecStart=/usr/local/lib/svvr-backup/check-backup.sh
+UMask=0077
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=1h
+MemoryMax=384M
